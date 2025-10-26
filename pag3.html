@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>G.R.I.N.D. — Linha do Tempo Interativa</title>
+<style>
+:root{
+  --bg:#0c0f1f; --panel:#14182a; --ink:#eaf0ff; --muted:#a7b1d9;
+  --axis:#3a4371; --grid:#20264a; --card:#0f1428; --chip:#1a1f3b;
+  --c1:#ff6b6b; /* latência ↓ */
+  --c2:#1dd1a1; /* foco ↑ */
+  --c3:#ffd84a; /* oscilação ↓ */
+  --c4:#ff9ec4; /* recuperação ↓ */
+  --c5:#6c7aef; /* consistência ↑ */
+  --g:#ff9f43; --r:#54a0ff; --i:#48dbfb; --n:#f368e0; --d:#10ac84;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#0a0d1a,#0c0f1f);color:var(--ink);
+     font:500 14px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
+.wrap{width:min(1200px,96vw);margin:16px auto;background:var(--panel);border:1px solid #ffffff18;border-radius:14px;box-shadow:0 12px 40px #0008, inset 0 1px 0 #ffffff12;padding:18px}
+h1{margin:0 0 6px;font-size:22px}
+.sub{margin:0 0 14px;color:var(--muted);font-size:13px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.pill{padding:6px 10px;border:1px solid #ffffff25;border-radius:999px;background:#ffffff12;color:#d9def7;font-size:12px}
+button{background:#141a36;color:#dbe1ff;border:1px solid #2a356a;border-radius:8px;padding:8px 10px;font-weight:600;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+input[type="range"]{width:280px}
+.toggle{display:inline-flex;gap:8px;align-items:center;background:#0f162f;border:1px solid #24336b;border-radius:8px;padding:6px}
+.segment{display:inline-flex;border:1px solid #2b376d;border-radius:8px;overflow:hidden}
+.segment button{border:0;background:#10163a;color:#bfc6ef;padding:8px 12px}
+.segment button.active{background:#26316a;color:#fff}
+.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}
+@media(max-width:980px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid #ffffff14;border-radius:12px;padding:12px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;background:var(--chip);border:1px solid #ffffff1a;border-radius:999px;font-size:12px;color:#dfe4ff;cursor:pointer;user-select:none}
+.dot{width:12px;height:12px;border-radius:50%}
+canvas{width:100%;height:380px;display:block;border-radius:10px;background:transparent}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+@media(max-width:980px){.kpis{grid-template-columns:1fr 1fr}}
+.kpi{background:#0b1228;border:1px solid #ffffff12;border-radius:10px;padding:10px}
+.kpi h3{margin:0;font-size:12px;color:#c8ceef}
+.kpi p{margin:2px 0 0;font-size:22px}
+.kpi small{color:var(--muted);font-size:11px}
+.hdr{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}
+.hdr h2{margin:0;font-size:16px}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;margin-left:6px;background:#ffffff17;border:1px solid #ffffff22}
+.copy h2{margin:14px 0 8px;font-size:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+.card{background:#0b1228;border:1px solid #ffffff12;border-radius:10px;padding:12px}
+.card h3{margin:0 0 6px;font-size:15px}
+.card p{margin:6px 0;color:#d8defa}
+.refs{font-size:12px;color:#b9c3f0}
+.hr{height:1px;background:#ffffff12;margin:10px 0}
+.note{color:#9aa6da;font-size:12px}
+.ctrlRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.ck{display:flex;gap:6px;align-items:center;font-size:12px;color:#cdd4ff}
+.ck input{accent-color:#6c7aef}
+.tooltip{position:absolute;pointer-events:none;background:#0b1228;border:1px solid #2a356a;color:#eaf0ff;padding:8px 10px;border-radius:8px;font-size:12px;white-space:nowrap;transform:translate(-50%,-120%);box-shadow:0 6px 20px #0008}
+.rel{position:relative}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>G.R.I.N.D. — Linha do Tempo Interativa</h1>
+    <p class="sub">Sequência prática ao acordar: <b>G → R → I → N → D</b>. Ajuste o número de práticas e isole indicadores ou músculos. Tudo recalibra em tempo real.</p>
+
+    <!-- CONTROLES SUPERIORES -->
+    <div class="bar">
+      <span class="pill">Práticas: <b id="lblN">0</b> / 10.000</span>
+      <input id="rng" type="range" min="0" max="10000" step="10" value="0"/>
+      <div class="toggle">
+        <div class="ck"><input id="soloMode" type="checkbox"/><label for="soloMode">Isolar ao clicar na legenda</label></div>
+        <div class="ck"><input id="fillArea" type="checkbox" checked/><label for="fillArea">Preencher área sob linhas</label></div>
+      </div>
+      <div class="segment" id="viewSeg">
+        <button data-view="geral" class="active">Indicadores gerais</button>
+        <button data-view="musculo">Por músculo</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- CHART PRINCIPAL -->
+      <div class="panel rel">
+        <div class="hdr">
+          <h2 id="chartTitle">Indicadores gerais</h2>
+          <div class="legend" id="legend">
+            <span class="chip" data-key="lat"><i class="dot" style="background:var(--c1)"></i>Latência p/ foco</span>
+            <span class="chip" data-key="dur"><i class="dot" style="background:var(--c2)"></i>Foco contínuo</span>
+            <span class="chip" data-key="osc"><i class="dot" style="background:var(--c3)"></i>Oscilação emocional</span>
+            <span class="chip" data-key="rec"><i class="dot" style="background:var(--c4)"></i>Recuperação pós-erro</span>
+            <span class="chip" data-key="adh"><i class="dot" style="background:var(--c5)"></i>Consistência diária</span>
+          </div>
+        </div>
+        <canvas id="chart" width="1040" height="380" aria-label="Gráfico"></canvas>
+        <div id="tip" class="tooltip" style="display:none"></div>
+
+        <div class="hr"></div>
+
+        <!-- CONTROLES DE VISUALIZAÇÃO -->
+        <div class="ctrlRow" id="ctrlGeral">
+          <span class="pill">Linhas visíveis:</span>
+          <label class="ck"><input type="checkbox" data-tog="lat" checked/> Latência</label>
+          <label class="ck"><input type="checkbox" data-tog="dur" checked/> Foco</label>
+          <label class="ck"><input type="checkbox" data-tog="osc" checked/> Oscilação</label>
+          <label class="ck"><input type="checkbox" data-tog="rec" checked/> Recuperação</label>
+          <label class="ck"><input type="checkbox" data-tog="adh" checked/> Consistência</label>
+          <span class="pill">Atalhos:</span>
+          <button class="btnN" data-n="30">30</button>
+          <button class="btnN" data-n="90">90</button>
+          <button class="btnN" data-n="180">180</button>
+          <button class="btnN" data-n="365">365</button>
+          <button class="btnN" data-n="1000">1000</button>
+          <button class="btnN" data-n="5000">5000</button>
+          <button class="btnN" data-n="10000">10000</button>
+        </div>
+
+        <!-- CONTROLES POR MÚSCULO -->
+        <div class="ctrlRow" id="ctrlMusculo" style="display:none">
+          <span class="pill">Músculo:</span>
+          <div class="segment" id="segMus">
+            <button data-m="G" class="active" style="color:#000;background:var(--g)">G</button>
+            <button data-m="R" style="color:#000;background:var(--r)">R</button>
+            <button data-m="I" style="color:#000;background:var(--i)">I</button>
+            <button data-m="N" style="color:#000;background:var(--n)">N</button>
+            <button data-m="D" style="color:#000;background:var(--d)">D</button>
+          </div>
+          <span class="pill" id="musLbl">G — Gestão Emocional</span>
+          <div id="togMus" class="toggle"></div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpis">
+          <div class="kpi"><h3>Latência p/ foco</h3><p id="v1">—</p><small>menor é melhor</small></div>
+          <div class="kpi"><h3>Foco contínuo</h3><p id="v2">—</p><small>maior é melhor</small></div>
+          <div class="kpi"><h3>Oscilação emocional</h3><p id="v3">—</p><small>índice relativo</small></div>
+          <div class="kpi"><h3>Recuperação pós-erro</h3><p id="v4">—</p><small>menor é melhor</small></div>
+          <div class="kpi"><h3>Consistência diária</h3><p id="v5">—</p><small>check-ins válidos</small></div>
+        </div>
+      </div>
+
+      <!-- MARCOS -->
+      <div class="panel">
+        <div class="hdr"><h2>Marcos esperados</h2></div>
+        <p><b>30 práticas</b> → latência <span id="m30_l">—</span>; foco <span id="m30_f">—</span>; recuperação <span id="m30_r">—</span>; consistência <span id="m30_c">—</span>.</p>
+        <p><b>90 práticas</b> → latência <span id="m90_l">—</span>; foco <span id="m90_f">—</span>; oscilação <span id="m90_o">—</span>.</p>
+        <p><b>180 práticas</b> → foco <span id="m180_f">—</span>; recuperação <span id="m180_r">—</span>.</p>
+        <p><b>365 práticas</b> → latência <span id="m365_l">—</span>; foco <span id="m365_f">—</span>; consistência <span id="m365_c">—</span>.</p>
+        <p><b>1000 práticas</b> → foco <span id="m1k_f">—</span>; recuperação <span id="m1k_r">—</span>; oscilação <span id="m1k_o">—</span>.</p>
+      </div>
+    </div>
+
+    <!-- BENEFÍCIOS COMERCIAIS DINÂMICOS -->
+    <div class="panel copy" style="margin-top:14px">
+      <h2>Benefícios por músculo — números dinâmicos e efeitos práticos</h2>
+      <div class="grid2">
+        <div class="card">
+          <h3>G — Gestão Emocional <span class="badge">Core + Peitoral</span></h3>
+          <p><b>Números:</b> queda de reatividade ~<span id="g_react">—</span>.</p>
+          <p><b>Vida:</b> menos impulsos, conversas difíceis com controle, decisões sob pressão com clareza.</p>
+          <p><b>Profissão:</b> menos tilt; pós-erro curto; leitura emocional apurada em negociações e mesas.</p>
+          <p class="refs">Referências: escrita expressiva melhora regulação e saúde (Pennebaker & Smyth). Ativa PFC e organiza narrativa.</p>
+        </div>
+        <div class="card">
+          <h3>R — Resiliência Mental <span class="badge">Coluna</span></h3>
+          <p><b>Números:</b> tolerância ao desconforto ~<span id="r_tol">—</span>↑; qualidade de recuperação ~<span id="r_recov">—</span>↑.</p>
+          <p><b>Vida:</b> postura em crises, serenidade frente a imprevistos.</p>
+          <p><b>Profissão:</b> estabilidade em longas sessões; consistência mesmo em downswings e prazos apertados.</p>
+          <p class="refs">Referências: isometria modula resposta autonômica e foco; microestresse controlado aumenta controle sob carga.</p>
+        </div>
+        <div class="card">
+          <h3>I — Imaginário Eficiente <span class="badge">Ombros</span></h3>
+          <p><b>Números:</b> nitidez da visualização ~<span id="i_vivid">—</span>↑; preparação pré-execução ~<span id="i_prep">—</span>↑.</p>
+          <p><b>Vida:</b> direção clara; menos procrastinação por ambiguidade.</p>
+          <p><b>Profissão:</b> menos “surpresa” cognitiva; cenário crítico já ensaiado.</p>
+          <p class="refs">Referências: prática mental melhora desempenho (Driskell et al.; Guillot & Collet).</p>
+        </div>
+        <div class="card">
+          <h3>N — Narrativa Interna <span class="badge">Braços</span></h3>
+          <p><b>Números:</b> autocrítica improdutiva ~<span id="n_self">—</span>↓; confiança percebida ~<span id="n_conf">—</span>↑.</p>
+          <p><b>Vida:</b> identidade coerente com metas; menos ruminação.</p>
+          <p><b>Profissão:</b> linguagem interna que sustenta execução; menos travas por crenças limitantes.</p>
+          <p class="refs">Referências: autoafirmação modula redes de autorregulação e valor (Cascio et al.; Creswell et al.).</p>
+        </div>
+        <div class="card">
+          <h3>D — Dominar o Foco <span class="badge">Pernas</span></h3>
+          <p><b>Números:</b> foco médio <span id="d_focus">—</span>; interrupções/h ↓ <span id="d_intr">—</span>.</p>
+          <p><b>Vida:</b> presença em tarefas chave; menos dispersão digital.</p>
+          <p><b>Profissão:</b> decisões mais rápidas; menos erros por distração; mais tempo em flow.</p>
+          <p class="refs">Referências: treino atencional melhora redes executivas e atenção sustentada (Jha; Tang; Mrazek).</p>
+        </div>
+        <div class="card">
+          <h3>Integração <span class="badge">G→R→I→N→D</span></h3>
+          <p><b>Efeito composto:</b> <span id="sys_comp">—</span></p>
+          <p><b>Resultado típico:</b> dia com latência baixa, energia útil alta, execução linear e resets rápidos.</p>
+          <p class="refs">Arquitetura: regular → ativar → projetar → verbalizar → executar.</p>
+        </div>
+      </div>
+      <p class="note">Números são projeções coerentes com literatura e prática diária consistente. Não são promessa clínica.</p>
+    </div>
+  </main>
+
+<script>
+/* ====== MODELO ====== */
+const M = {
+  latIni:7.5, latEnd:2.5, durIni:13.5, durEnd:28, oscIni:100, oscEnd:46, recIni:5.0, recEnd:1.8, adhIni:80, adhEnd:96,
+  fLat:n=>M.latEnd + (M.latIni - M.latEnd)*Math.exp(-n/300),
+  fDur:n=>M.durEnd - (M.durEnd - M.durIni)*Math.exp(-n/500),
+  fOsc:n=>M.oscEnd + (M.oscIni - M.oscEnd)*Math.exp(-n/600),
+  fRec:n=>M.recEnd + (M.recIni - M.recEnd)*Math.exp(-n/500),
+  fAdh:n=>M.adhEnd - (M.adhEnd - M.adhIni)*Math.exp(-n/700),
+  // por músculo
+  fReatividade:n=> 60*(1 - Math.exp(-n/6000)),    // G  (queda %)
+  fTolerancia:n=>  80*(1 - Math.exp(-n/5000)),    // R  (↑ %)
+  fRecQual:n=>     70*(1 - Math.exp(-n/6000)),    // R  (↑ %)
+  fVivid:n=>       80*(1 - Math.exp(-n/5500)),    // I  (↑ %)
+  fPrep:n=>        65*(1 - Math.exp(-n/5000)),    // I  (↑ %)
+  fSelfTalk:n=>    75*(1 - Math.exp(-n/5500)),    // N  (queda % autocrítica)
+  fConf:n=>        55*(1 - Math.exp(-n/6000)),    // N  (↑ %)
+  fInterrup:n=>    65*(1 - Math.exp(-n/2500))     // D  (queda %)
+};
+
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const pad = {l:56,r:16,t:14,b:28};
+const XMIN=0,XMAX=10000;
+
+const CSS = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+const seriesGeral = {
+  lat:{color:CSS('--c1'), label:'Latência p/ foco (min)', f:M.fLat, min:M.latEnd, max:M.latIni, unit:'min', dir:'down'},
+  dur:{color:CSS('--c2'), label:'Foco contínuo (min)', f:M.fDur, min:M.durIni, max:M.durEnd, unit:'min', dir:'up'},
+  osc:{color:CSS('--c3'), label:'Oscilação emocional (índice)', f:M.fOsc, min:M.oscEnd, max:M.oscIni, unit:'idx', dir:'down'},
+  rec:{color:CSS('--c4'), label:'Recuperação pós-erro (min)', f:M.fRec, min:M.recEnd, max:M.recIni, unit:'min', dir:'down'},
+  adh:{color:CSS('--c5'), label:'Consistência diária (%)', f:M.fAdh, min:M.adhIni, max:M.adhEnd, unit:'%', dir:'up'}
+};
+
+const seriesMusculo = {
+  G:[
+    {key:'g_react', color:CSS('--g'),  label:'Queda de reatividade (%)', f:M.fReatividade, min:0, max:60, unit:'%'}
+  ],
+  R:[
+    {key:'r_tol', color:CSS('--r'), label:'Tolerância ao desconforto (%)', f:M.fTolerancia, min:0, max:80, unit:'%'},
+    {key:'r_recov', color:'#4cd137', label:'Qualidade de recuperação (%)', f:M.fRecQual, min:0, max:70, unit:'%'}
+  ],
+  I:[
+    {key:'i_vivid', color:CSS('--i'), label:'Nitidez da visualização (%)', f:M.fVivid, min:0, max:80, unit:'%'},
+    {key:'i_prep',  color:'#00d2d3', label:'Preparação pré-execução (%)', f:M.fPrep,  min:0, max:65, unit:'%'}
+  ],
+  N:[
+    {key:'n_self', color:CSS('--n'), label:'Queda da autocrítica improdutiva (%)', f:M.fSelfTalk, min:0, max:75, unit:'%'},
+    {key:'n_conf', color:'#ee5253', label:'Confiança percebida (%)', f:M.fConf, min:0, max:55, unit:'%'}
+  ],
+  D:[
+    {key:'d_focus', color:CSS('--d'), label:'Foco contínuo (min)', f:M.fDur, min:M.durIni, max:M.durEnd, unit:'min'},
+    {key:'d_intr',  color:'#1dd1a1', label:'Queda de interrupções/h (%)', f:M.fInterrup, min:0, max:65, unit:'%'}
+  ]
+};
+
+let N=0;
+let view='geral'; // 'geral' | 'musculo'
+let musSel='G';
+let visible = {lat:true,dur:true,osc:true,rec:true,adh:true}; // geral
+let visMus = {}; // por músculo
+Object.keys(seriesMusculo).forEach(k=>{
+  visMus[k]={}; seriesMusculo[k].forEach(s=> visMus[k][s.key]=true);
+});
+
+const rng = document.getElementById('rng');
+const lblN = document.getElementById('lblN');
+const tip = document.getElementById('tip');
+const fillArea = document.getElementById('fillArea');
+const soloMode = document.getElementById('soloMode');
+
+/* ====== DESENHO ====== */
+function xToPx(n){ const x=(n-XMIN)/(XMAX-XMIN); return pad.l + x*(W-pad.l-pad.r); }
+function yToPx(val,min,max){ const t=(val-min)/(max-min); const y=1-t; return pad.t + y*(H-pad.t-pad.b); }
+
+function drawGrid(){
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.lineWidth=1; ctx.strokeStyle=CSS('--grid');
+  const xSteps=[0,1000,3000,5000,7000,10000];
+  xSteps.forEach(n=>{const x=xToPx(n); ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,H-pad.b);ctx.stroke();});
+  const rows=4;
+  for(let i=0;i<=rows;i++){const y=pad.t+(i/rows)*(H-pad.t-pad.b);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();}
+  // eixo X label
+  ctx.fillStyle = CSS('--muted'); ctx.font="12px system-ui";
+  ctx.textAlign="center"; xSteps.forEach(n=>ctx.fillText(n.toString(), xToPx(n), H-8));
+  ctx.textAlign="left"; ctx.fillText("práticas →", W-95, H-8);
+  ctx.restore();
+}
+
+function drawSeriesGeral(){
+  const keys = Object.keys(seriesGeral).filter(k=>visible[k]);
+  keys.forEach(k=>{
+    const s=seriesGeral[k]; drawLine(s, N, fillArea.checked);
+  });
+  drawCursorValuesGeral(N);
+}
+
+function drawSeriesMusculo(){
+  const arr = seriesMusculo[musSel].filter(s=> visMus[musSel][s.key]);
+  arr.forEach(s=> drawLine(s, N, fillArea.checked));
+  drawCursorValuesMusculo(N);
+}
+
+function drawLine(s, nNow, fill){
+  // path
+  ctx.save();
+  ctx.lineWidth=2.5; ctx.strokeStyle=s.color; ctx.beginPath();
+  let first=true; const step=100;
+  for(let n=0;n<=XMAX;n+=step){
+    const x=xToPx(n);
+    const y=yToPx(s.f(n), Math.min(s.min,s.max), Math.max(s.min,s.max));
+    if(first){ctx.moveTo(x,y);first=false;} else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  if(fill){
+    const grd = ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+    const c = s.color;
+    grd.addColorStop(0, hexToRgba(c, .25)); grd.addColorStop(1, hexToRgba(c, 0));
+    ctx.lineTo(xToPx(XMAX), H-pad.b);
+    ctx.lineTo(xToPx(0), H-pad.b);
+    ctx.closePath();
+    ctx.fillStyle=grd; ctx.fill();
+  }
+
+  // ponto atual
+  const xNow = xToPx(nNow);
+  const yNow = yToPx(s.f(nNow), Math.min(s.min,s.max), Math.max(s.min,s.max));
+  ctx.fillStyle=s.color; ctx.beginPath(); ctx.arc(xNow,yNow,4.5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawCursor(N){
+  ctx.save();
+  ctx.strokeStyle=CSS('--axis'); ctx.lineWidth=1.5; ctx.setLineDash([5,5]);
+  const x=xToPx(N); ctx.beginPath(); ctx.moveTo(x,pad.t); ctx.lineTo(x,H-pad.b); ctx.stroke();
+  ctx.restore();
+}
+
+function drawCursorValuesGeral(n){
+  drawCursor(n);
+  const lines = Object.keys(seriesGeral)
+    .filter(k=>visible[k])
+    .map(k=>{
+      const s=seriesGeral[k]; return {name:s.label, val:s.f(n), unit:s.unit, color:s.color};
+    });
+  showTip(n, lines);
+}
+
+function drawCursorValuesMusculo(n){
+  drawCursor(n);
+  const lines = seriesMusculo[musSel]
+    .filter(s=>visMus[musSel][s.key])
+    .map(s=>({name:s.label, val:s.f(n), unit:s.unit, color:s.color}));
+  showTip(n, lines);
+}
+
+function showTip(n, arr){
+  const tipEl = tip;
+  const rows = arr.map(o=>`<div style="display:flex;gap:8px;align-items:center;">
+    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${o.color}"></span>
+    <span>${o.name}:</span><b>${fmt(o.val,o.unit)}</b></div>`).join("");
+  tipEl.innerHTML = `<div style="margin-bottom:4px;opacity:.8">Práticas: <b>${n}</b></div>${rows}`;
+  tipEl.style.display='block';
+  // posiciona no topo do cursor
+  const x=xToPx(n); tipEl.style.left = x+'px'; tipEl.style.top = (pad.t+12)+'px';
+}
+
+/* ====== UI ESTADO ====== */
+function fmt(v, unit){
+  if(unit==='%') return v.toFixed(0)+'%';
+  if(unit==='min') return v.toFixed(1)+' min';
+  if(unit==='idx') return v.toFixed(0);
+  return v.toFixed(2);
+}
+function hexToRgba(hex, a){
+  if(/^#/.test(hex)){
+    const c=hex.replace('#',''); const n=c.length===3?c.split('').map(x=>x+x).join(''):c;
+    const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  // assume rgb(...)
+  return hex.replace('rgb','rgba').replace(')',`,`+a+')');
+}
+
+function updateKPIs(){
+  setTxt('lblN', N);
+  setTxt('v1', fmt(M.fLat(N),'min'));
+  setTxt('v2', fmt(M.fDur(N),'min'));
+  setTxt('v3', fmt(M.fOsc(N),'idx'));
+  setTxt('v4', fmt(M.fRec(N),'min'));
+  setTxt('v5', fmt(M.fAdh(N),'%'));
+}
+
+function updateMarcos(){
+  const m=(n,ids)=>{ setTxt(ids.f,fmt(M.fDur(n),'min')); setTxt(ids.l,fmt(M.fLat(n),'min')); setTxt(ids.r,fmt(M.fRec(n),'min')); setTxt(ids.c,fmt(M.fAdh(n),'%')); if(ids.o) setTxt(ids.o,fmt(M.fOsc(n),'idx')); };
+  m(30,  {f:'m30_f',l:'m30_l',r:'m30_r',c:'m30_c',o:'m90_o'});
+  m(90,  {f:'m90_f',l:'m90_l',r:'m30_r',c:'m90_c',o:'m90_o'});
+  m(180, {f:'m180_f',l:'m30_l',r:'m180_r',c:'m365_c'});
+  m(365, {f:'m365_f',l:'m365_l',r:'m180_r',c:'m365_c'});
+  setTxt('m1k_f',fmt(M.fDur(1000),'min'));
+  setTxt('m1k_r',fmt(M.fRec(1000),'min'));
+  setTxt('m1k_o',fmt(M.fOsc(1000),'idx'));
+}
+
+function updateBeneficios(){
+  setTxt('g_react', `~${M.fReatividade(N).toFixed(0)}%`);
+  setTxt('r_tol',   `~${M.fTolerancia(N).toFixed(0)}%`);
+  setTxt('r_recov', `~${M.fRecQual(N).toFixed(0)}%`);
+  setTxt('i_vivid', `~${M.fVivid(N).toFixed(0)}%`);
+  setTxt('i_prep',  `~${M.fPrep(N).toFixed(0)}%`);
+  setTxt('n_self',  `~${M.fSelfTalk(N).toFixed(0)}%`);
+  setTxt('n_conf',  `~${M.fConf(N).toFixed(0)}%`);
+  setTxt('d_focus', fmt(M.fDur(N),'min'));
+  setTxt('d_intr',  `~${M.fInterrup(N).toFixed(0)}%`);
+  const composite = [
+    `latência ${fmt(M.fLat(N),'min')}`,
+    `foco ${fmt(M.fDur(N),'min')}`,
+    `oscilação ${fmt(M.fOsc(N),'idx')}`,
+    `recuperação ${fmt(M.fRec(N),'min')}`,
+    `consistência ${fmt(M.fAdh(N),'%')}`
+  ].join(' · ');
+  setTxt('sys_comp', composite);
+}
+
+function render(){
+  drawGrid();
+  if(view==='geral'){ drawSeriesGeral(); }
+  else { drawSeriesMusculo(); }
+  updateKPIs(); updateMarcos(); updateBeneficios();
+}
+
+function setTxt(id, val){ const el=document.getElementById(id); if(el) el.textContent=val; }
+
+/* ====== EVENTOS ====== */
+rng.addEventListener('input', e=>{ N=+e.target.value; render(); });
+document.querySelectorAll('.btnN').forEach(b=> b.addEventListener('click',()=>{ N=+b.dataset.n; rng.value=N; render(); }));
+
+// legend click → isolate / toggle
+document.getElementById('legend').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip'); if(!chip) return;
+  const key = chip.dataset.key;
+  if(view==='geral'){
+    if(soloMode.checked){
+      // isolar
+      const allFalse = Object.values(visible).every(v=>!v);
+      if(allFalse || (Object.keys(visible).filter(k=>visible[k]).length===1 && visible[key])){
+        // mostrar todos
+        Object.keys(visible).forEach(k=>visible[k]=true);
+      } else {
+        Object.keys(visible).forEach(k=>visible[k]=(k===key));
+      }
+      // sincar checkboxes
+      document.querySelectorAll('[data-tog]').forEach(cb=> cb.checked = visible[cb.dataset.tog]);
+    } else {
+      visible[key]=!visible[key];
+      const cb=document.querySelector(`[data-tog="${key}"]`); if(cb) cb.checked=visible[key];
+    }
+    render();
+  }
+});
+
+// checkboxes gerais
+document.getElementById('ctrlGeral').addEventListener('change', e=>{
+  const cb = e.target.closest('input[type="checkbox"][data-tog]'); if(!cb) return;
+  visible[cb.dataset.tog]=cb.checked; render();
+});
+
+// view switch
+document.getElementById('viewSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  view = btn.dataset.view;
+  document.getElementById('chartTitle').textContent = view==='geral' ? 'Indicadores gerais' : 'Indicadores por músculo';
+  document.getElementById('ctrlGeral').style.display = view==='geral' ? 'flex' : 'none';
+  document.getElementById('ctrlMusculo').style.display = view==='musculo' ? 'flex' : 'none';
+  render();
+});
+
+// músculo tabs
+document.getElementById('segMus').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#segMus button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  musSel = b.dataset.m;
+  const names = {G:'G — Gestão Emocional',R:'R — Resiliência Mental',I:'I — Imaginário Eficiente',N:'N — Narrativa Interna',D:'D — Dominar o Foco'};
+  document.getElementById('musLbl').textContent = names[musSel];
+  // construir toggles do músculo
+  const box = document.getElementById('togMus'); box.innerHTML='';
+  seriesMusculo[musSel].forEach(s=>{
+    const id='tog_'+s.key;
+    const wrap=document.createElement('label'); wrap.className='ck';
+    wrap.innerHTML=`<input id="${id}" type="checkbox" ${visMus[musSel][s.key]?'checked':''}/> ${s.label}`;
+    wrap.querySelector('input').addEventListener('change',ev=>{
+      visMus[musSel][s.key]=ev.target.checked; render();
+    });
+    box.appendChild(wrap);
+  });
+  render();
+});
+
+// hover tooltip segue cursor horizontal na área do canvas
+canvas.addEventListener('mousemove', e=>{
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const ratio = (x - pad.l) / (W - pad.l - pad.r);
+  const n = Math.max(0, Math.min(10000, Math.round(ratio*10000)));
+  tip.style.left = (rect.left + x) + 'px';
+  tip.style.top  = (rect.top + pad.t + 14) + 'px';
+  // atualizar valores no hover, sem mudar N global
+  drawGrid();
+  if(view==='geral'){
+    Object.keys(seriesGeral).filter(k=>visible[k]).forEach(k=>drawLine(seriesGeral[k], n, fillArea.checked));
+    drawCursorValuesGeral(n);
+  } else {
+    seriesMusculo[musSel].filter(s=>visMus[musSel][s.key]).forEach(s=>drawLine(s, n, fillArea.checked));
+    drawCursorValuesMusculo(n);
+  }
+});
+canvas.addEventListener('mouseleave', ()=>{
+  tip.style.display='none';
+  render();
+});
+
+/* ====== INIT ====== */
+function init(){
+  // toggles iniciais por músculo
+  const box = document.getElementById('togMus');
+  seriesMusculo[musSel].forEach(s=>{
+    const id='tog_'+s.key;
+    const wrap=document.createElement('label'); wrap.className='ck';
+    wrap.innerHTML=`<input id="${id}" type="checkbox" checked/> ${s.label}`;
+    wrap.querySelector('input').addEventListener('change',ev=>{
+      visMus[musSel][s.key]=ev.target.checked; render();
+    });
+    box.appendChild(wrap);
+  });
+  render();
+}
+init();
+</script>
+</body>
+</html>
