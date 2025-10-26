@@ -1,1 +1,289 @@
-<h1>Olá, mundo!</h1>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Linha do Tempo — Desafio G.R.I.N.D. (Simulação de Benefícios)</title>
+<style>
+  :root{
+    --bg:#0e1020; --panel:#14182a; --ink:#eaf0ff; --muted:#a9b2d8;
+    --axis:#3a4371; --grid:#222a52; --card:#0f1428; --chip:#1a1f3b; --accent:#6c7aef;
+    --c1:#ff4d4d;   /* latência foco (↓)    */
+    --c2:#17d474;   /* duração foco (↑)     */
+    --c3:#ffd84a;   /* oscilação emocional (↓) */
+    --c4:#ff8ab3;   /* recuperação pós-erro (↓) */
+    --c5:#6c7aef;   /* consistência (↑)      */
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:linear-gradient(180deg,#0b0d1a 0%, #0e1020 100%);
+    color:var(--ink); font:500 14px/1.5 system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    display:grid; place-items:center; padding:16px;
+  }
+  .wrap{
+    width:min(1160px,96vw);
+    background:var(--panel);
+    border:1px solid #ffffff17; border-radius:14px;
+    box-shadow:0 12px 40px #0008, inset 0 1px 0 #ffffff12;
+    padding:18px;
+  }
+  h1{margin:0 0 6px; font-size:22px}
+  .sub{margin:0 0 16px; color:var(--muted); font-size:13px}
+  .controls{display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:10px 0 6px}
+  .pill{padding:6px 10px; border:1px solid #ffffff25; border-radius:999px; background:#ffffff12; color:#d9def7; font-size:12px}
+  .row{display:grid; grid-template-columns:1fr; gap:12px}
+  .board{display:grid; grid-template-columns:1.3fr .7fr; gap:14px}
+  @media (max-width:900px){ .board{grid-template-columns:1fr} }
+  .panel{
+    background:var(--card); border:1px solid #ffffff10; border-radius:12px; padding:12px;
+  }
+  .legend{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0}
+  .chip{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; background:var(--chip); border:1px solid #ffffff1a; border-radius:999px; font-size:12px; color:#dfe4ff}
+  .dot{width:12px; height:12px; border-radius:50%}
+  canvas{width:100%; height:360px; display:block; background:transparent; border-radius:10px}
+  .axisline{height:1px; background:var(--axis); opacity:.6; margin-top:-12px}
+  .kpis{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:8px}
+  @media (max-width:900px){ .kpis{grid-template-columns:1fr 1fr} }
+  .kpi{background:#0b1228; border:1px solid #ffffff12; border-radius:10px; padding:10px}
+  .kpi h3{margin:0; font-size:12px; color:#c8ceef; letter-spacing:.2px}
+  .kpi p{margin:2px 0 0; font-size:22px}
+  .kpi small{color:var(--muted); font-size:11px}
+  .slab{display:grid; gap:8px}
+  .btns{display:flex; gap:8px; flex-wrap:wrap}
+  button{
+    background:#141a36; color:#dbe1ff; border:1px solid #2a356a; border-radius:8px; padding:8px 10px; font-weight:600; cursor:pointer;
+  }
+  button:hover{filter:brightness(1.08)}
+  input[type="range"]{width:260px}
+  .hdr{display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px}
+  .hdr h2{margin:0; font-size:16px}
+  .copy h2{margin:18px 0 8px; font-size:18px}
+  .copy h3{margin:12px 0 6px; font-size:15px}
+  .copy p{margin:6px 0; color:#d8defa}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width:900px){ .grid2{grid-template-columns:1fr} }
+  .cardCopy{background:#0b1228; border:1px solid #ffffff12; border-radius:10px; padding:12px}
+  .badge{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; margin-left:8px; background:#ffffff17; border:1px solid #ffffff22}
+  .ok{color:#9bfac8} .down{color:#ffd173} .up{color:#99c0ff}
+</style>
+</head>
+<body>
+  <main class="wrap" aria-label="Linha do Tempo — Desafio G.R.I.N.D.">
+    <h1>Desafio G.R.I.N.D. — Linha do Tempo de Benefícios</h1>
+    <p class="sub">Sequência adotada: <b>G → R → I → N → D</b>. Modelo preditivo para 0 → 10.000 práticas diárias, iniciando ao acordar. Valores são estimativas com prática consistente.</p>
+
+    <section class="board">
+      <div class="panel">
+        <div class="hdr">
+          <h2>Projeção dos indicadores ao longo das práticas</h2>
+          <div class="legend">
+            <span class="chip"><i class="dot" style="background:var(--c1)"></i> Latência p/ foco (min) ↓</span>
+            <span class="chip"><i class="dot" style="background:var(--c2)"></i> Foco contínuo (min) ↑</span>
+            <span class="chip"><i class="dot" style="background:var(--c3)"></i> Oscilação emocional (índice) ↓</span>
+            <span class="chip"><i class="dot" style="background:var(--c4)"></i> Recuperação pós-erro (min) ↓</span>
+            <span class="chip"><i class="dot" style="background:var(--c5)"></i> Consistência diária (%) ↑</span>
+          </div>
+        </div>
+        <canvas id="chart" width="1024" height="360" aria-label="Gráfico dos indicadores"></canvas>
+        <div class="axisline"></div>
+
+        <div class="controls">
+          <span class="pill">Práticas: <b id="lblN">0</b> / 10.000</span>
+          <input id="rng" type="range" min="0" max="10000" step="10" value="0" />
+          <div class="btns">
+            <button data-n="7">7</button>
+            <button data-n="30">30</button>
+            <button data-n="90">90</button>
+            <button data-n="180">180</button>
+            <button data-n="365">365</button>
+            <button data-n="730">730</button>
+            <button data-n="1000">1000</button>
+            <button data-n="5000">5000</button>
+            <button data-n="10000">10000</button>
+          </div>
+        </div>
+
+        <div class="kpis" id="kpis">
+          <div class="kpi"><h3>Latência p/ foco</h3><p id="v1">—</p><small class="down">quanto menor, melhor</small></div>
+          <div class="kpi"><h3>Foco contínuo</h3><p id="v2">—</p><small class="up">quanto maior, melhor</small></div>
+          <div class="kpi"><h3>Oscilação emocional</h3><p id="v3">—</p><small class="down">índice relativo</small></div>
+          <div class="kpi"><h3>Recuperação pós-erro</h3><p id="v4">—</p><small class="down">quanto menor, melhor</small></div>
+          <div class="kpi"><h3>Consistência diária</h3><p id="v5">—</p><small class="up">check-ins válidos</small></div>
+        </div>
+      </div>
+
+      <div class="panel slab">
+        <h2>Marcos esperados</h2>
+        <p><b>30 práticas</b> → latência de foco ~<span id="m30_l">—</span> min; foco contínuo ~<span id="m30_f">—</span> min; recuperação ~<span id="m30_r">—</span> min; consistência ~<span id="m30_c">—</span>%.</p>
+        <p><b>90 práticas</b> → latência ~<span id="m90_l">—</span>; foco ~<span id="m90_f">—</span>; oscilação ↓; consistência ~<span id="m90_c">—</span>%.</p>
+        <p><b>180 práticas</b> → foco ~<span id="m180_f">—</span> min; recuperação ~<span id="m180_r">—</span> min.</p>
+        <p><b>365 práticas</b> → latência ~<span id="m365_l">—</span>; foco ~<span id="m365_f">—</span> min; consistência ~<span id="m365_c">—</span>%.</p>
+        <p><b>1000 práticas</b> → foco ~<span id="m1k_f">—</span> min; recuperação ~<span id="m1k_r">—</span> min; oscilação índice ~<span id="m1k_o">—</span>.</p>
+      </div>
+    </section>
+
+    <section class="panel copy" style="margin-top:14px">
+      <h2>Benefícios por músculo — números e efeitos práticos</h2>
+      <div class="grid2">
+        <div class="cardCopy">
+          <h3>G — Gestão Emocional <span class="badge">Core + Peitoral</span></h3>
+          <p><b>Números (estimativas):</b> reatividade ↓ 15% (30 práticas), ↓ 30% (90), ↓ 45% (180), ↓ 55% (365), ↓ 60% (1000).</p>
+          <p><b>Na vida:</b> menos impulsos, decisões sob pressão com clareza, relações mais estáveis.</p>
+          <p><b>Na profissão:</b> queda de tilt, pós-erro mais rápido, melhor leitura de contexto.</p>
+        </div>
+        <div class="cardCopy">
+          <h3>R — Resiliência Mental <span class="badge">Coluna</span></h3>
+          <p><b>Números (estimativas):</b> tolerância ao desconforto ↑ 20% (90), ↑ 35% (180), ↑ 50% (365), ↑ 65% (1000).</p>
+          <p><b>Na vida:</b> mais capacidade de manter postura em crises.</p>
+          <p><b>Na profissão:</b> consistência em downswings, ritmo estável em longas sessões.</p>
+        </div>
+        <div class="cardCopy">
+          <h3>I — Imaginário Eficiente <span class="badge">Ombros</span></h3>
+          <p><b>Números (estimativas):</b> nitidez de visualização ↑ 25% (90), ↑ 40% (180), ↑ 55% (365), ↑ 70% (1000).</p>
+          <p><b>Na vida:</b> direção clara, menor procrastinação por ambiguidade.</p>
+          <p><b>Na profissão:</b> preparação mental antes de decisões, menos “surpresa” em cenários críticos.</p>
+        </div>
+        <div class="cardCopy">
+          <h3>N — Narrativa Interna <span class="badge">Braços</span></h3>
+          <p><b>Números (estimativas):</b> autocrítica improdutiva ↓ 20% (90), ↓ 35% (180), ↓ 50% (365), ↓ 65% (1000).</p>
+          <p><b>Na vida:</b> identidade mais coerente com objetivos.</p>
+          <p><b>Na profissão:</b> confiança estável, linguagem interna que sustenta execução.</p>
+        </div>
+        <div class="cardCopy">
+          <h3>D — Dominar o Foco <span class="badge">Pernas</span></h3>
+          <p><b>Números (estimativas):</b> foco contínuo médio 20–22 min (180), 24–26 min (365), 26–28 min (1000); interrupções/hora ↓ 30–50%.</p>
+          <p><b>Na vida:</b> presença real nas tarefas importantes.</p>
+          <p><b>Na profissão:</b> decisões mais rápidas, menos erros por distração.</p>
+        </div>
+        <div class="cardCopy">
+          <h3>Integração do sistema <span class="badge">Sequência G→R→I→N→D</span></h3>
+          <p><b>Efeito composto:</b> latência p/ foco ↓, energia útil ↑, execução estável. Transferência para o dia inteiro.</p>
+          <p><b>Resultado após 365+ práticas:</b> mente previsível, rotina leve de manutenção, performance mais linear.</p>
+        </div>
+      </div>
+      <p style="margin-top:10px;color:#9aa6da">Notas: projeções são estimativas com prática diária consistente logo ao acordar. Ajuste tempos conforme progresso e use a “carta na manga” (1 min por músculo) para manter a cadeia em dias críticos.</p>
+    </section>
+  </main>
+
+<script>
+/* Modelo preditivo simples — curvas exponenciais/logísticas calibradas para 10.000 práticas */
+const model = {
+  // valores iniciais → alvos
+  latIni:7.5, latEnd:2.5,   // min
+  durIni:13.5, durEnd:28,   // min
+  oscIni:100,  oscEnd:46,   // índice relativo
+  recIni:5.0,  recEnd:1.8,  // min
+  adhIni:80,   adhEnd:96,   // %
+
+  fLat(n){return this.latEnd + (this.latIni - this.latEnd)*Math.exp(-n/300)},
+  fDur(n){return this.durEnd - (this.durEnd - this.durIni)*Math.exp(-n/500)},
+  fOsc(n){return this.oscEnd + (this.oscIni - this.oscEnd)*Math.exp(-n/600)},
+  fRec(n){return this.recEnd + (this.recIni - this.recEnd)*Math.exp(-n/500)},
+  fAdh(n){return this.adhEnd - (this.adhEnd - this.adhIni)*Math.exp(-n/700)}
+};
+
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const pad = {l:48, r:12, t:10, b:26};
+const XMIN = 0, XMAX = 10000;
+const series = [
+  { key:'lat',  color:getComputedStyle(document.documentElement).getPropertyValue('--c1').trim(),  label:'Latência p/ foco',  f:n=>model.fLat(n),  min:model.latEnd, max:model.latIni, invert:false, unit:'min'},
+  { key:'dur',  color:getComputedStyle(document.documentElement).getPropertyValue('--c2').trim(),  label:'Foco contínuo',      f:n=>model.fDur(n),  min:model.durIni, max:model.durEnd, invert:false, unit:'min'},
+  { key:'osc',  color:getComputedStyle(document.documentElement).getPropertyValue('--c3').trim(),  label:'Oscilação emocional',f:n=>model.fOsc(n),  min:model.oscEnd, max:model.oscIni, invert:false, unit:'idx'},
+  { key:'rec',  color:getComputedStyle(document.documentElement).getPropertyValue('--c4').trim(),  label:'Recuperação pós-erro',f:n=>model.fRec(n), min:model.recEnd, max:model.recIni, invert:false, unit:'min'},
+  { key:'adh',  color:getComputedStyle(document.documentElement).getPropertyValue('--c5').trim(),  label:'Consistência diária', f:n=>model.fAdh(n), min:model.adhIni, max:model.adhEnd, invert:false, unit:'%'},
+];
+
+function xToPx(n){
+  const x = (n - XMIN) / (XMAX - XMIN);
+  return pad.l + x * (W - pad.l - pad.r);
+}
+function yToPx(value, s){ // normaliza cada série para 0..1 e inverte vertical
+  const min = Math.min(s.min, s.max), max = Math.max(s.min, s.max);
+  const t = (value - min) / (max - min);
+  const y = 1 - t;
+  return pad.t + y * (H - pad.t - pad.b);
+}
+function drawGrid(){
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
+  ctx.lineWidth = 1;
+  const steps = [0, 1000, 3000, 5000, 7000, 10000];
+  steps.forEach(n=>{
+    const x = xToPx(n);
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H-pad.b); ctx.stroke();
+  });
+  // horizontais 4 linhas
+  const rows = 4;
+  for(let i=0;i<=rows;i++){
+    const y = pad.t + (i/rows)*(H - pad.t - pad.b);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y); ctx.stroke();
+  }
+  // eixo X labels
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
+  ctx.font = "12px system-ui, Segoe UI, Roboto";
+  ctx.textAlign = "center";
+  steps.forEach(n=>{ ctx.fillText(n.toString(), xToPx(n), H-8); });
+  ctx.textAlign = "left";
+  ctx.fillText("práticas →", W-95, H-8);
+  ctx.restore();
+}
+function drawSeries(){
+  series.forEach(s=>{
+    ctx.beginPath();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = s.color;
+    for(let n=0;n<=XMAX;n+=80){
+      const x = xToPx(n);
+      const y = yToPx(s.f(n), s);
+      if(n===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  });
+}
+function fmt(v, unit){
+  if(unit === '%') return v.toFixed(0)+'%';
+  if(unit === 'min') return v.toFixed(1)+' min';
+  if(unit === 'idx') return v.toFixed(0);
+  return v.toFixed(2);
+}
+function updateKPIs(n){
+  document.getElementById('lblN').textContent = n;
+  const v1 = model.fLat(n), v2 = model.fDur(n), v3 = model.fOsc(n), v4 = model.fRec(n), v5 = model.fAdh(n);
+  document.getElementById('v1').textContent = fmt(v1,'min');
+  document.getElementById('v2').textContent = fmt(v2,'min');
+  document.getElementById('v3').textContent = fmt(v3,'idx');
+  document.getElementById('v4').textContent = fmt(v4,'min');
+  document.getElementById('v5').textContent = fmt(v5,'%');
+}
+function preset(n, ids){
+  document.getElementById(ids.f).textContent = fmt(model.fDur(n),'min');
+  document.getElementById(ids.l).textContent = fmt(model.fLat(n),'min');
+  document.getElementById(ids.r).textContent = fmt(model.fRec(n),'min');
+  document.getElementById(ids.c).textContent = fmt(model.fAdh(n),'%');
+  if(ids.o) document.getElementById(ids.o).textContent = fmt(model.fOsc(n),'idx');
+}
+function init(){
+  drawGrid(); drawSeries();
+  const rng = document.getElementById('rng');
+  const setN = n => { rng.value = n; updateKPIs(n); };
+  rng.addEventListener('input', e => updateKPIs(+e.target.value));
+  document.querySelectorAll('button[data-n]').forEach(b=>{
+    b.addEventListener('click', () => setN(+b.dataset.n));
+  });
+  setN(0);
+  preset(30,  {f:'m30_f', l:'m30_l', r:'m30_r', c:'m30_c'});
+  preset(90,  {f:'m90_f', l:'m90_l', r:'m30_r', c:'m90_c'});
+  preset(180, {f:'m180_f', l:'m30_l', r:'m180_r', c:'m90_c'});
+  preset(365, {f:'m365_f', l:'m365_l', r:'m180_r', c:'m365_c'});
+  document.getElementById('m1k_f').textContent = fmt(model.fDur(1000),'min');
+  document.getElementById('m1k_r').textContent = fmt(model.fRec(1000),'min');
+  document.getElementById('m1k_o').textContent = fmt(model.fOsc(1000),'idx');
+}
+init();
+</script>
+</body>
+</html>
+
